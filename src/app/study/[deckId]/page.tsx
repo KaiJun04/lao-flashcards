@@ -53,7 +53,8 @@ export default function StudyDeckPage() {
       .from("cards")
       .select("id, english, lao, roman, audio_url")
       .eq("deck_id", deckId)
-      .order("created_at", { ascending: true })
+      .order("position", { ascending: true, nullsFirst: false })
+      .order("created_at", {ascending: true })
       .returns<Card[]>();
 
     if (cardsErr) setMsg(cardsErr.message);

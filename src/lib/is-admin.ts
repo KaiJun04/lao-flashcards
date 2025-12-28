@@ -4,7 +4,7 @@ export function isAdminEmail(email?: string | null) {
   const e = email.trim().toLowerCase();
 
   const ADMIN_EMAILS = [
-    "youradmin@email.com",
+    "chiamkaijun@gmail.com",
     // add more here
   ].map((x) => x.trim().toLowerCase());
 
