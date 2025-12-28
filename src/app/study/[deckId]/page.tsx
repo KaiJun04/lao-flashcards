@@ -54,7 +54,7 @@ export default function StudyDeckPage() {
       .select("id, english, lao, roman, audio_url")
       .eq("deck_id", deckId)
       .order("position", { ascending: true, nullsFirst: false })
-      .order("created_at", {ascending: true })
+      .order("created_at", { ascending: true })
       .returns<Card[]>();
 
     if (cardsErr) setMsg(cardsErr.message);
@@ -91,6 +91,11 @@ export default function StudyDeckPage() {
 
   function toggleReveal() {
     setRevealed((v) => !v);
+  }
+
+  // ✅ Stop taps on audio controls from flipping the card (mobile Safari)
+  function stopCardToggle(e: React.SyntheticEvent) {
+    e.stopPropagation();
   }
 
   return (
@@ -148,19 +153,31 @@ export default function StudyDeckPage() {
                         <div className="text-2xl font-semibold">
                           {current?.lao}
                         </div>
+
                         {current?.roman && (
                           <div className="text-xl text-slate-500">
                             {current.roman}
                           </div>
                         )}
-                        {current?.audio_url ? (
-                          <audio controls src={current.audio_url} className="mt-1" />
-                        ) : (
-                          <div className="text-sm text-slate-400 italic">
-                             🔇 No audio available yet
-                          </div>
-                        )}
 
+                        {/* ✅ Prevent audio click from toggling card */}
+                        <div
+                          onClick={stopCardToggle}
+                          onPointerDown={stopCardToggle}
+                          onTouchStart={stopCardToggle}
+                        >
+                          {current?.audio_url ? (
+                            <audio
+                              controls
+                              src={current.audio_url}
+                              className="mt-1"
+                            />
+                          ) : (
+                            <div className="text-sm text-slate-400 italic">
+                              🔇 No audio available yet
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -192,7 +209,6 @@ export default function StudyDeckPage() {
                   Next →
                 </button>
               </div>
-
 
               <div className="mt-5 text-slate-500">
                 Tip: click anywhere on the card to flip.

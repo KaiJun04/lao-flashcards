@@ -9,7 +9,6 @@ type BestRow = {
   best_score: number;
   last_played: string;
   rank: number;
-  // If your RPC returns username, keep it; otherwise it will be undefined
   username?: string | null;
 };
 
@@ -48,7 +47,6 @@ export default function LeaderboardPage() {
 
     setMe(auth.user.id);
 
-    // check admin from profiles.role
     const { data: profile, error: profErr } = await supabase
       .from("profiles")
       .select("role")
@@ -57,7 +55,6 @@ export default function LeaderboardPage() {
 
     if (!profErr) setIsAdmin(profile?.role === "admin");
 
-    // load both leaderboards in parallel
     const [bestRes, avgRes] = await Promise.all([
       supabase.rpc("quiz_leaderboard", { limit_count: 100 }),
       supabase.rpc("quiz_average_leaderboard", { limit_n: 100 }),
@@ -71,11 +68,9 @@ export default function LeaderboardPage() {
     }
 
     if (avgRes.error) {
-      // only show error if best also failed; otherwise keep best working
       if (!bestRes.error) setMsg(avgRes.error.message);
       setAvgRows([]);
     } else {
-      // ensure numbers are numbers
       setAvgRows(
         ((avgRes.data ?? []) as any[]).map((r) => ({
           user_id: r.user_id,
@@ -139,7 +134,6 @@ export default function LeaderboardPage() {
             : "Ranked by average score (includes attempts)."}
         </p>
 
-        {/* Tabs */}
         <div className="mt-6 flex flex-wrap gap-2">
           <button
             onClick={() => setTab("best")}
@@ -207,7 +201,6 @@ export default function LeaderboardPage() {
                         <div className="flex items-center justify-end gap-3">
                           <span>{r.best_score}</span>
 
-                          {/* Admin-only reset */}
                           {isAdmin && !isMeRow && (
                             <button
                               onClick={() => resetUser(r.user_id)}
@@ -229,53 +222,95 @@ export default function LeaderboardPage() {
               </div>
             )
           ) : avgRows.length === 0 ? (
-            <div className="text-slate-500">
-              No scores yet. Play a quiz first.
-            </div>
+            <div className="text-slate-500">No scores yet. Play a quiz first.</div>
           ) : (
+            // ✅ Option A + fade hints on BOTH sides (disappear after scrolling)
             <div className="rounded-[36px] bg-white border border-slate-200 shadow-xl overflow-hidden">
-              <div className="grid grid-cols-12 gap-2 px-8 py-5 text-sm font-semibold text-slate-500 border-b border-slate-200">
-                <div className="col-span-2">Rank</div>
-                <div className="col-span-5">Player</div>
-                <div className="col-span-2 text-right">Avg</div>
-                <div className="col-span-2 text-right">Attempts</div>
-                <div className="col-span-1 text-right">Best</div>
-              </div>
-
-              {avgRows
-                .slice()
-                .sort((a, b) => b.avg_score - a.avg_score || b.attempts - a.attempts)
-                .map((r, i) => {
-                  const isMeRow = me === r.user_id;
-
-                  return (
-                    <div
-                      key={r.user_id}
-                      className={[
-                        "grid grid-cols-12 gap-2 px-8 py-5 border-b border-slate-100",
-                        isMeRow ? "bg-slate-900 text-white" : "bg-white text-slate-900",
-                      ].join(" ")}
-                    >
-                      <div className="col-span-2 font-bold">#{i + 1}</div>
-
-                      <div className="col-span-5 font-semibold">
-                        {isMeRow ? "You" : r.username ? r.username : "Player"}
-                      </div>
-
-                      <div className="col-span-2 text-right font-black">
-                        {Number.isFinite(r.avg_score) ? r.avg_score.toFixed(2) : "-"}
-                      </div>
-
-                      <div className="col-span-2 text-right font-black">
-                        {r.attempts}
-                      </div>
-
-                      <div className="col-span-1 text-right font-black">
-                        {r.best_score}
-                      </div>
+              <div className="relative">
+                <div
+                  className="overflow-x-auto"
+                  data-scrolled="0"
+                  onScroll={(e) => {
+                    const el = e.currentTarget;
+                    el.dataset.scrolled = el.scrollLeft > 4 ? "1" : "0";
+                  }}
+                >
+                  {/* min width prevents header overlap; scrolling happens instead */}
+                  <div className="min-w-[640px]">
+                    <div className="grid grid-cols-12 gap-2 px-8 py-5 text-sm font-semibold text-slate-500 border-b border-slate-200 whitespace-nowrap">
+                      <div className="col-span-2">Rank</div>
+                      <div className="col-span-5">Player</div>
+                      <div className="col-span-2 text-right">Avg</div>
+                      <div className="col-span-2 text-right">Attempts</div>
+                      <div className="col-span-1 text-right">Best</div>
                     </div>
-                  );
-                })}
+
+                    {avgRows
+                      .slice()
+                      .sort(
+                        (a, b) =>
+                          b.avg_score - a.avg_score || b.attempts - a.attempts
+                      )
+                      .map((r, i) => {
+                        const isMeRow = me === r.user_id;
+
+                        return (
+                          <div
+                            key={r.user_id}
+                            className={[
+                              "grid grid-cols-12 gap-2 px-8 py-5 border-b border-slate-100 whitespace-nowrap",
+                              isMeRow
+                                ? "bg-slate-900 text-white"
+                                : "bg-white text-slate-900",
+                            ].join(" ")}
+                          >
+                            <div className="col-span-2 font-bold">#{i + 1}</div>
+
+                            <div className="col-span-5 font-semibold">
+                              {isMeRow ? "You" : r.username ? r.username : "Player"}
+                            </div>
+
+                            <div className="col-span-2 text-right font-black">
+                              {Number.isFinite(r.avg_score)
+                                ? r.avg_score.toFixed(2)
+                                : "-"}
+                            </div>
+
+                            <div className="col-span-2 text-right font-black">
+                              {r.attempts}
+                            </div>
+
+                            <div className="col-span-1 text-right font-black">
+                              {r.best_score}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  {/* ✅ Left fade hint (hidden once scrolled) */}
+                  <div
+                    className={[
+                      "pointer-events-none absolute inset-y-0 left-0 w-10",
+                      "bg-gradient-to-r from-white to-transparent",
+                      "transition-opacity duration-200",
+                      // hide when user has scrolled
+                      "[[data-scrolled='1']_&]:opacity-0",
+                    ].join(" ")}
+                  />
+
+                  {/* ✅ Right fade hint (hidden once scrolled) */}
+                  <div
+                    className={[
+                      "pointer-events-none absolute inset-y-0 right-0 w-10",
+                      "bg-gradient-to-l from-white to-transparent",
+                      "transition-opacity duration-200",
+                      // hide when user has scrolled
+                      "[[data-scrolled='1']_&]:opacity-0",
+                    ].join(" ")}
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>
