@@ -10,6 +10,8 @@ export default function HomePage() {
   const supabase = useMemo(() => supabaseBrowser(), []);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  const [username, setUsername] = useState<string | null>(null); // ✅ NEW
+
   const [loading, setLoading] = useState(true);
   const [showQuizIntro, setShowQuizIntro] = useState(false);
   const [msg, setMsg] = useState("");
@@ -17,14 +19,12 @@ export default function HomePage() {
   async function startQuiz() {
     setMsg("");
 
-    // Optional: block if not logged in
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) {
       router.push("/login");
       return;
     }
 
-    // Timer starts HERE (not on quiz page load)
     sessionStorage.setItem("quizStartAt", String(Date.now()));
     sessionStorage.setItem("quizQs", "15");
     sessionStorage.setItem("quizSecPerQ", "3");
@@ -40,8 +40,17 @@ export default function HomePage() {
         return;
       }
 
-      // ✅ SET ADMIN FLAG HERE
+      // ✅ SET ADMIN FLAG
       setIsAdmin(isAdminEmail(auth.user.email));
+
+      // ✅ FETCH USERNAME (HOME PAGE ONLY)
+      const { data } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", auth.user.id)
+        .single();
+
+      setUsername(data?.username ?? null);
 
       setLoading(false);
     })();
@@ -60,11 +69,26 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto max-w-5xl px-6 py-12">
+      {/* ✅ relative so top-right positioning works */}
+      <div className="relative mx-auto max-w-5xl px-6 py-12">
+        {/* ✅ LOGGED IN AS (TOP RIGHT, HOME PAGE ONLY) */}
+        {username && (
+        <div className="absolute top-8 right-6">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm backdrop-blur">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-500/20" />
+            <span className="text-slate-500">Logged in as</span>
+            <span className="font-semibold text-slate-900">{username}</span>
+          </div>
+        </div>
+      )}
+
+
         <div className="text-sm text-slate-500">LAO3101S Flashcards</div>
+
         <h1 className="mt-2 text-4xl font-bold tracking-tight">
           Ready to learn Lao? 🇱🇦
         </h1>
+
         <p className="mt-3 text-slate-600">
           Choose a mode to start studying.
         </p>
@@ -97,7 +121,7 @@ export default function HomePage() {
             <div className="mt-2 text-slate-600">
               Mix all decks into one big session.
             </div>
-            <div className="mt-4 text-sm font-semibold text-slate-700 group-hover:text-slate-900">
+            <div className="mt-4 text-sm font-semibold text-slate-700">
               Coming Soon
             </div>
           </button>
@@ -134,7 +158,6 @@ export default function HomePage() {
         </div>
 
         <div className="mt-10 flex gap-3">
-          {/* ✅ ONLY SHOW ADMIN IF ADMIN */}
           {isAdmin && (
             <button
               onClick={() => router.push("/admin")}
